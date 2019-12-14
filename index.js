@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
 var bodyParser = require('body-parser');
+const TeamsModel = require('.models/teams')
+
 const teams = require('./teams.json')
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
