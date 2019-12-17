@@ -1,49 +1,44 @@
-const express = require('express')
-const app = express()
-var bodyParser = require('body-parser');
-const TeamsModel = require('.models/teams')
-
-const teams = require('./teams.json')
-app.use(bodyParser.json()); // support json encoded bodies
-app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
-
-
-app.get('/', (request, response) => {
-    response.send('Lets see some teams!')
-})
-
-app.get('/teams', (request, response) => {
-    response.send(teams)
-})
-
-app.get('/teams/:filter', (request, response) => {
-    let specificTeam = teams.filter((team) => { 
-        let filter = request.params.filter
-        return team.id == filter || team.abbreviation === filter
-    })
-    response.send(specificTeam)
-})
-
-app.post('/team', bodyParser.json(), (request, response) => {
-  const body = request.body || {}
-  console.log({body})
-  if (!body.id || !body.location || !body.mascot || !body.abbreviation || !body.conference || !body.division) {
-        response.send('Be sure you have an id, location, mascot, abbreviation, conference, and division specified')
-        
-  }
-    teams.push(body)
   
+const express = require('express')
+const bodyParser = require('body-parser')
+const Op = require('sequelize').Op
+const TeamsModel = require('./models')
 
-  response.send(body)
+const app = express()
+
+app.get('/teams', async (request, response) => {
+  const teams = await TeamsModel.Teams.findAll()
+
+  response.send(teams)
 })
 
+app.get('/teams/:identifier', async (request, response) => {
+  const { identifier } = request.params
+  const match = await TeamsModel.Teams.findOne({
+    where: { [Op.or]: [{ id: identifier }, { abbreviation: identifier }] }
+  })
 
-
-app.all('*', (request, response) => {
-    response.send('Wrong input command')
+  if (match) {
+    response.send(match)
+  } else {
+    response.sendStatus(404)
+  }
 })
 
+app.post('/teams', bodyParser.json(), async (request, response) => {
+  const {
+    location, mascot, abbreviation, conference, division,
+  } = request.body
 
-app.listen(1337, () => {
-    console.log('started up')
+  if (!location || !mascot || !abbreviation || !conference || !division) {
+    response.status(400).send('The following fields are required: location, mascot, abbreviation, conference, division')
+  }
+
+  const newTeam = await TeamsModel.Teams.create({ location, mascot, abbreviation, conference, division })
+
+  response.status(201).send(newTeam)
 })
+
+app.listen(1337, () => { console.log('Listening on port 1337') })
+
+module.exports = app
